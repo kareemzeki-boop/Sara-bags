@@ -710,7 +710,7 @@ async function placeOrder() {
   const btn = document.getElementById('submit-btn');
   btn.disabled = true; btn.textContent = 'Placing order…';
 
-  const API = window.SARA_API || 'http://localhost:3001/api';
+  const API = 'https://sara-bags-production.up.railway.app/api';
   const payload = {
     customer_name: name,
     customer_phone: phone,
