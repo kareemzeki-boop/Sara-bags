@@ -61,3 +61,54 @@ router.get('/categories/list', (req, res) => {
 });
 
 module.exports = router;
+
+// POST /api/products — create product (admin)
+router.post('/', (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  if (adminKey !== process.env.ADMIN_KEY) return res.status(401).json({ success: false, error: 'Unauthorized' });
+  try {
+    const { name, subtitle, description, price, category, colours, unavail, bg_text, active, image_b64 } = req.body;
+    if (!name || !category || !price) return res.status(400).json({ success: false, error: 'name, category, price required' });
+    const result = db.prepare(`
+      INSERT INTO products (name, subtitle, description, price, category, colours, unavail, bg_text, active, image_b64)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(name, subtitle||null, description||null, price, category,
+        JSON.stringify(colours||[]), JSON.stringify(unavail||[]),
+        bg_text||null, active!=null?active:1, image_b64||null);
+    res.status(201).json({ success: true, data: { id: result.lastInsertRowid } });
+  } catch(e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// PUT /api/products/:id — update product (admin)
+router.put('/:id', (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  if (adminKey !== process.env.ADMIN_KEY) return res.status(401).json({ success: false, error: 'Unauthorized' });
+  try {
+    const { name, subtitle, description, price, category, colours, unavail, bg_text, active, image_b64 } = req.body;
+    const fields = [];
+    const vals = [];
+    if (name !== undefined) { fields.push('name=?'); vals.push(name); }
+    if (subtitle !== undefined) { fields.push('subtitle=?'); vals.push(subtitle); }
+    if (description !== undefined) { fields.push('description=?'); vals.push(description); }
+    if (price !== undefined) { fields.push('price=?'); vals.push(price); }
+    if (category !== undefined) { fields.push('category=?'); vals.push(category); }
+    if (colours !== undefined) { fields.push('colours=?'); vals.push(JSON.stringify(colours)); }
+    if (unavail !== undefined) { fields.push('unavail=?'); vals.push(JSON.stringify(unavail)); }
+    if (bg_text !== undefined) { fields.push('bg_text=?'); vals.push(bg_text); }
+    if (active !== undefined) { fields.push('active=?'); vals.push(active); }
+    if (image_b64 !== undefined) { fields.push('image_b64=?'); vals.push(image_b64); }
+    vals.push(req.params.id);
+    db.prepare(`UPDATE products SET ${fields.join(',')} WHERE id=?`).run(...vals);
+    res.json({ success: true });
+  } catch(e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// DELETE /api/products/:id (admin)
+router.delete('/:id', (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  if (adminKey !== process.env.ADMIN_KEY) return res.status(401).json({ success: false, error: 'Unauthorized' });
+  try {
+    db.prepare('DELETE FROM products WHERE id=?').run(req.params.id);
+    res.json({ success: true });
+  } catch(e) { res.status(500).json({ success: false, error: e.message }); }
+});
